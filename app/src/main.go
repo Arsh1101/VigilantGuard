@@ -15,7 +15,9 @@ import (
 )
 
 type exec_data_t struct {
-	Pid    uint32
+	Pid uint32
+	//Arsh: get uid
+	Uid    uint32
 	F_name [32]byte
 	Comm   [32]byte
 }
@@ -36,6 +38,7 @@ func main() {
 	objs := gen_execveObjects{}
 
 	loadGen_execveObjects(&objs, nil)
+	// Arsh: I had too pass nil to Tracepoint, I got an error on it.
 	link.Tracepoint("syscalls", "sys_enter_execve", objs.EnterExecve, nil)
 
 	rd, err := perf.NewReader(objs.Events, os.Getpagesize())
@@ -62,7 +65,13 @@ func main() {
 			continue
 		}
 
-		fmt.Printf("On cpu %02d %s ran : %d %s\n",
-			ev.CPU, data.Comm, data.Pid, data.F_name)
+		//Arsh: get uid
+		// fmt.Printf("On cpu %02d %s ran : %d %s -> user : %d \n",
+		// 	ev.CPU, data.Comm, data.Pid, data.F_name, data.Uid)
+
+		//Arsh: test the danger of the root running somthing on machine.
+		if data.Uid == 0 {
+			fmt.Printf("On cpu %02d %s ran : %d %s -> user : %d \n", ev.CPU, data.Comm, data.Pid, data.F_name, data.Uid)
+		}
 	}
 }

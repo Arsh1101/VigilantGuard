@@ -4,6 +4,8 @@
 #define FNAME_LEN 32
 struct exec_data_t {
 	u32 pid;
+	//Arsh: get 'uid' for 'privilege escalation'
+	u32 uid;
 	u8 fname[FNAME_LEN];
 	u8 comm[FNAME_LEN];
 };
@@ -34,9 +36,16 @@ int enter_execve(struct execve_entry_args_t *args)
 {
 	struct exec_data_t exec_data = {};
 	u64 pid_tgid;
+	//Arsh: uid
+	u64 uid_tgid;
 
 	pid_tgid = bpf_get_current_pid_tgid();
+	//Arsh: get uid
+	uid_tgid = bpf_get_current_uid_gid();
+	
 	exec_data.pid = LAST_32_BITS(pid_tgid);
+	//Arsh: set uid
+	exec_data.uid = LAST_32_BITS(uid_tgid);
 
 	bpf_probe_read_user_str(exec_data.fname,
 		sizeof(exec_data.fname), args->filename);
