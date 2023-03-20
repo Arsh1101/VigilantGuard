@@ -11,9 +11,11 @@ import (
 	"log"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
+	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/sys/unix"
 )
@@ -102,7 +104,7 @@ func main() {
 
 		//Arsh: test the danger of the root running somthing on machine.
 		if data.Uid == 0 {
-			temp := fmt.Sprintf("On cpu %02d %s ran : %d %s -> user : %d", ev.CPU, string(bytes.Trim(data.Comm[:], "\x00")), data.Pid, string(bytes.Trim(data.F_name[:], "\x00")), data.Uid)
+			temp := fmt.Sprintf("On cpu %02d %s ran - %d %s -> user - %d", ev.CPU, string(bytes.Trim(data.Comm[:], "\x00")), data.Pid, string(bytes.Trim(data.F_name[:], "\x00")), data.Uid)
 			fmt.Println(temp)
 			addedID := addNewRow(temp)
 			if addedID > 0 {
@@ -165,7 +167,7 @@ func transferFromDb(wg *sync.WaitGroup, id chan int64) {
 			if err != nil {
 				log.Println(err)
 			}
-			appendToFile(fmt.Sprintf("%d: %s\n", name.ID, name.Name))
+			appendToFile(fmt.Sprintf("%d-> %s\n", name.ID, name.Name))
 		}
 		rows.Close()
 		deleteFromDb(int(lastID))
@@ -173,18 +175,44 @@ func transferFromDb(wg *sync.WaitGroup, id chan int64) {
 }
 
 func appendToFile(line string) {
-	file, err := os.OpenFile("output.yaml", os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
+	file, err := os.OpenFile("log/lnx_privileged_user_creation_"+time.Now().String()+".yaml", os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
 	if err != nil {
 		log.Println(err)
 	}
 	defer file.Close()
 
 	writer := bufio.NewWriter(file)
-	_, err = writer.WriteString(line)
+	_, err = writer.WriteString(createSRule_PE(line))
 	if err != nil {
 		log.Println(err)
 	}
 	writer.Flush()
+}
+
+// Privilege Escalation SIGMA Rule
+func createSRule_PE(content string) string {
+	result := `title: Privileged User Has Been Created
+id: ` + uuid.New().String() + `
+description: Detects the addition of a new user to a privileged group such as "root" or "sudo"
+references:
+- https://digital.nhs.uk/cyber-alerts/2018/cc-2825
+- https://linux.die.net/man/8/useradd
+- https://github.com/redcanaryco/atomic-red-team/blob/25acadc0b43a07125a8a5b599b28bbc1a91ffb06/atomics/T1136.001/T1136.001.md#atomic-test-5---create-a-new-user-in-linux-with-root-uid-and-gid
+author: Pawel Mazur
+date: ` + time.Now().Format("2006-01-02") + `
+tags:
+- attack.persistence
+- attack.t1136.001
+- attack.t1098
+logsource:
+product: linux
+definition: '/var/log/secure on REHL systems or /var/log/auth.log on debian like Systems needs to be collected in order for this detection to work'
+detection: ` + content + `
+falsepositives:
+- Administrative activity
+status: experimental
+level: high`
+	return result
 }
 
 func deleteFromDb(lastID int) {
