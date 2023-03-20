@@ -6,11 +6,12 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"log"
+	"os"
+
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
 	"golang.org/x/sys/unix"
-	"log"
-	"os"
 )
 
 type exec_data_t struct {
@@ -35,7 +36,7 @@ func main() {
 	objs := gen_execveObjects{}
 
 	loadGen_execveObjects(&objs, nil)
-	link.Tracepoint("syscalls", "sys_enter_execve", objs.EnterExecve)
+	link.Tracepoint("syscalls", "sys_enter_execve", objs.EnterExecve, nil)
 
 	rd, err := perf.NewReader(objs.Events, os.Getpagesize())
 	if err != nil {
