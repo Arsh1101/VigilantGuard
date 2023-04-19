@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package filestream;
+
+option go_package = "example.com/go-grpc";
+
+message SendFileRequest {
+  string filename = 1;
+  bytes data = 2;
+}
+
+message SendStatus {
+  bool success = 1;
+  string message = 2;
+}
+
+service FileTransfer {
+  rpc SendFile(stream SendFileRequest) returns (SendStatus);
+}
