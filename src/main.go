@@ -124,7 +124,10 @@ func main() {
 
 	for {
 		// Arsh: It should work on background
-		startTimeLog = comunication.TransferLogs(startTimeLog)
+		//
+		go func() {
+			startTimeLog = comunication.TransferLogs(startTimeLog)
+		}()
 		ev, err := rd.Read()
 		if err != nil {
 			log.Fatalf("Read fail")
@@ -151,6 +154,7 @@ func main() {
 			// fmt.Printf("On cpu %02d %s ran : %d %s -> user : %d \n", ev.CPU, data.Comm, data.Pid, data.F_name, data.Uid)
 			temp := fmt.Sprintf("On cpu %02d %s ran - %d %s -> user - %d", ev.CPU, string(bytes.Trim(data.Comm[:], "\x00")), data.Pid, string(bytes.Trim(data.F_name[:], "\x00")), data.Uid)
 			wg.Add(1)
+			// fmt.Println(temp)
 			go logWorker(temp)
 		}
 	}

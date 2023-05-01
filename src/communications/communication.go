@@ -2,6 +2,7 @@ package comunication
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"io/fs"
 	"log"
@@ -93,45 +94,32 @@ func findFilesByDateRange(dir string, start time.Time, end time.Time) []fs.FileI
 	return files
 }
 
-func TransferLogs(start time.Time) time.Time {
-	//Get Logs:
-	// files, err := os.ReadDir(thePath)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// start, _ := time.Parse(time.RFC3339, "2022-11-26T07:04:05Z")
-	// var dir = "./"
+func serverConnectionCheck() bool {
+	result := true
+	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Printf("did not connect: %v\n", err)
+		result = false
+	} else {
+		log.Printf("did connect: %v\n", err)
+	}
+	defer conn.Close()
+	return result
+}
 
+func TransferLogs(start time.Time) time.Time {
+	//Get Lo
 	end := time.Now()
 	files := findFilesByDateRange(thePath, start, end)
-	for _, file := range files {
-		// fmt.Println(file.Name(), file.IsDir())
-		for !fileStreaming(thePath, file.Name()) {
-			// fmt.Println("Stop!")
-			time.Sleep(50 * time.Second)
-			log.Println("File sent.")
-			// fmt.Println("Continue!")
+	for i, file := range files {
+		fmt.Println(i)
+		if !fileStreaming(thePath, file.Name()) {
+			time.Sleep(1 * time.Second)
+			log.Println("Could not send log.")
 		}
 	}
-
 	if len(files) > 0 {
 		return end
 	}
 	return start
-	// start = end
-
-	// for {
-	// 	end := time.Now()
-	// 	files := findFilesByDateRange(thePath, start, end)
-	// 	for _, file := range files {
-	// 		// fmt.Println(file.Name(), file.IsDir())
-	// 		for !fileStreaming(thePath, file.Name()) {
-	// 			// fmt.Println("Stop!")
-	// 			time.Sleep(50 * time.Second)
-	// 			log.Println("File sent.")
-	// 			// fmt.Println("Continue!")
-	// 		}
-	// 	}
-	// 	start = end
-	// }
 }
